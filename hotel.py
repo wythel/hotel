@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import time
+from typing import Dict, List
 import pandas
 import platform
 from selenium.webdriver.chrome.webdriver import WebDriver as Chrome
@@ -13,16 +14,24 @@ def parse_options():
     parser = ArgumentParser()
 
     parser.add_argument(
-        "--name", dest="name", help="Hotel name")
+        "--name", dest="name", help="Hotel name", required=False)
     parser.add_argument(
-        "--check-in", dest="check_in", help="Check in date")
+        "--check-in", dest="check_in", help="Check in date", required=False)
     parser.add_argument(
-        "--check-out", dest="check_out", help="Checkout date")
+        "--check-out", dest="check_out", help="Checkout date", required=False)
+    parser.add_argument(
+        "--from-csv-file", dest="from_csv_file",
+        help="Provide names and check in/out dates from a csv file",
+        required=False, default=None
+    )
     return parser.parse_args()
 
 
-def main():
-    options = parse_options()
+def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[Dict]:
+    """
+    get the hotel price by given name and check in/out date
+    """
+
     if platform.system() != "Darwin":
         chrome_options = Options()
         chrome_options.add_argument("--headless")  # 無頭模式 (Headless Mode)
@@ -35,26 +44,26 @@ def main():
     else:
         driver = Chrome()
 
-    driver.get(f"https://www.google.com/travel/search?q={options.name}&hl=zh-Hant-CA")
+    driver.get(f"https://www.google.com/travel/search?q={name}&hl=zh-Hant-CA")
 
-    # time.sleep(10)
     print("Setting check-in date")
     checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
     checkin.send_keys(
         Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
-        options.check_in + Keys.ENTER)
+        checkin_date + Keys.ENTER)
     time.sleep(5)
     print("Setting check-out date")
     checkout = driver.find_element(By.CSS_SELECTOR, '[placeholder="退房"]')
     checkout.send_keys(
         Keys.BACK_SPACE * len(checkout.get_attribute("value")) +
-        options.check_out + Keys.ENTER)
+        checkout_date + Keys.ENTER)
     time.sleep(5)
     # 查看更多選項
     driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
     time.sleep(5)
 
-    with open("prices.png", "wb") as png:
+    file_name: str = f"{name}_{checkin_date}_{checkout_date}_prices.png"
+    with open(file_name, "wb") as png:
         png.write(driver.get_screenshot_as_png())
 
     all_options = driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')[-1]
@@ -66,9 +75,23 @@ def main():
             prices.append({"OTA": ota, "price": price})
         except NoSuchElementException:
             print(row.text)
-    print(prices)
+    driver.quit()
+    return prices
 
-    data = {options.name: prices}
+
+def main():
+    options = parse_options()
+    if options.from_csv_file is None:
+        key = "_".join((options.name, options.check_in, options.check_out))
+        data = {key: get_hotel_prices(
+            options.name, options.check_in, options.check_out)}
+    else:
+        data = {}
+        reader = pandas.read_csv(options.from_csv_file)
+        for row in reader.to_dict(orient="records"):
+            key = "_".join((row['name'], row['checkin'], row['checkout']))
+            data[key] = get_hotel_prices(
+                row['name'], row['checkin'], row['checkout'])
 
     with pandas.ExcelWriter("data.xlsx", engine="xlsxwriter") as writer:
         for sheet_name, records in data.items():
