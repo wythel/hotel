@@ -10,6 +10,9 @@ python = "^3.12"
 selenium = "^4.29.0"
 bpython = "^0.25"
 pdbpp = "^0.10.3"
+pandas = "^2.2.3"
+openpyxl = "^3.1.5"
+xlsxwriter = "^3.2.2"
 
 
 [build-system]
