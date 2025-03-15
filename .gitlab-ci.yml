@@ -18,9 +18,9 @@
 
 stages:          # List of stages for jobs, and their order of execution
   - run
-  
 
-build-job:       # This job runs in the build stage, which runs first.
+
+run script:       # This job runs in the build stage, which runs first.
   image: wythel/hotel
   stage: run
   before_script:
@@ -30,4 +30,6 @@ build-job:       # This job runs in the build stage, which runs first.
     - poetry install
   script:
     - python hotel.py --name 北投晶泉丰旅 --check-in 7月5日 --check-out 7月9日
-
+  artifacts:
+    paths:
+      - *.png

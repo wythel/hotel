@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # 更新套件列表並安裝必要的依賴項
 RUN apt-get update && \
-    apt-get install -y wget gnupg software-properties-common && \
+    apt-get install -y wget gnupg software-properties-common fonts-noto fonts-noto-cjk && \
 
     # 安裝 Python 3.12 和 pip
     add-apt-repository ppa:deadsnakes/ppa && \
@@ -21,3 +21,6 @@ RUN apt-get update && \
 
     # 清理不必要的檔案，減少映像大小
     rm -rf /var/lib/apt/lists/* google-chrome-stable_current_amd64.deb
+
+# 確保 Chrome、Python、xvfb 和字型安裝成功
+RUN google-chrome --version && python3.12 --version && pip3 --version && fc-list :lang=zh
