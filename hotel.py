@@ -16,9 +16,9 @@ def parse_options():
     parser.add_argument(
         "--name", dest="name", help="Hotel name", required=False)
     parser.add_argument(
-        "--check-in", dest="check_in", help="Check in date", required=False)
+        "--start-date", dest="start", help="start date", required=False)
     parser.add_argument(
-        "--check-out", dest="check_out", help="Checkout date", required=False)
+        "--end-date", dest="end", help="end date", required=False)
     parser.add_argument(
         "--from-csv-file", dest="from_csv_file",
         help="Provide names and check in/out dates from a csv file",
