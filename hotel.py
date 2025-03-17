@@ -69,8 +69,14 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
     file_name: str = f"{name}_{checkin_date}_{checkout_date}.png"
     with open(file_name, "wb") as png:
         png.write(driver.get_screenshot_as_png())
+    try:
+        all_options = [
+            elem for elem in driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')
+            if elem.text != ''][-1]
+    except KeyError:
+        print(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
+        return []
 
-    all_options = driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')[-1]
     prices = []
     for row in all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc'):
         try:
