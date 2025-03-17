@@ -73,7 +73,7 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
         all_options = [
             elem for elem in driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')
             if elem.text != ''][-1]
-    except KeyError:
+    except IndexError:
         print(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
         return []
 
