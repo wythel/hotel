@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import time
 from typing import Dict, List
+from datetime import datetime, timedelta
 import pandas
 import platform
 from selenium.webdriver.chrome.webdriver import WebDriver as Chrome
@@ -9,6 +10,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
+ONE_DAY = timedelta(days=1)
+
 
 def parse_options():
     parser = ArgumentParser()
@@ -16,9 +19,9 @@ def parse_options():
     parser.add_argument(
         "--name", dest="name", help="Hotel name", required=False)
     parser.add_argument(
-        "--check-in", dest="check_in", help="Check in date", required=False)
+        "--start-date", dest="start", help="start date", required=False)
     parser.add_argument(
-        "--check-out", dest="check_out", help="Checkout date", required=False)
+        "--end-date", dest="end", help="end date", required=False)
     parser.add_argument(
         "--from-csv-file", dest="from_csv_file",
         help="Provide names and check in/out dates from a csv file",
@@ -46,27 +49,34 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
 
     driver.get(f"https://www.google.com/travel/search?q={name}&hl=zh-Hant-CA")
 
-    print("Setting check-in date")
     checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
     checkin.send_keys(
         Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
         checkin_date + Keys.ENTER)
     time.sleep(5)
-    print("Setting check-out date")
     checkout = driver.find_element(By.CSS_SELECTOR, '[placeholder="退房"]')
     checkout.send_keys(
         Keys.BACK_SPACE * len(checkout.get_attribute("value")) +
         checkout_date + Keys.ENTER)
     time.sleep(5)
     # 查看更多選項
-    driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
-    time.sleep(5)
+    try:
+        driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
+        time.sleep(5)
+    except NoSuchElementException:
+        pass
 
-    file_name: str = f"{name}_{checkin_date}_{checkout_date}_prices.png"
+    file_name: str = f"{name}_{checkin_date}_{checkout_date}.png"
     with open(file_name, "wb") as png:
         png.write(driver.get_screenshot_as_png())
+    try:
+        all_options = [
+            elem for elem in driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')
+            if elem.text != ''][-1]
+    except IndexError:
+        print(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
+        return []
 
-    all_options = driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')[-1]
     prices = []
     for row in all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc'):
         try:
@@ -86,17 +96,24 @@ def main():
         data = {key: get_hotel_prices(
             options.name, options.check_in, options.check_out)}
     else:
-        data = {}
         reader = pandas.read_csv(options.from_csv_file)
         for row in reader.to_dict(orient="records"):
-            key = "_".join((row['name'], row['checkin'], row['checkout']))
-            data[key] = get_hotel_prices(
-                row['name'], row['checkin'], row['checkout'])
+            start = datetime.strptime(row['start'], "%m月%d日")
+            end = datetime.strptime(row['end'], "%m月%d日") + ONE_DAY
+            hotel = row['name']
+            data = {}
+            while start < end:
+                checkin = datetime.strftime(start, "%m月%d日")
+                checkout = datetime.strftime(start + ONE_DAY, "%m月%d日")
+                key = "_".join((checkin, checkout))
+                data[key] = get_hotel_prices(
+                    row['name'], checkin, checkout)
+                start += ONE_DAY
 
-    with pandas.ExcelWriter("data.xlsx", engine="xlsxwriter") as writer:
-        for sheet_name, records in data.items():
-            df = pandas.DataFrame(records)
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
+            with pandas.ExcelWriter(f"{hotel}.xlsx", engine="xlsxwriter") as writer:
+                for sheet_name, records in data.items():
+                    df = pandas.DataFrame(records)
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
 
 
 if __name__ == "__main__":
