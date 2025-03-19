@@ -33,4 +33,4 @@ run script:       # This job runs in the build stage, which runs first.
   artifacts:
     paths:
       - "*.png"
-      - "data.xlsx"
+      - "*.xlsx"
