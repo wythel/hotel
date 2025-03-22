@@ -9,6 +9,12 @@ from selenium.webdriver.chrome.webdriver import Options
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import ElementNotInteractableException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 
 ONE_DAY = timedelta(days=1)
 
@@ -28,6 +34,63 @@ def parse_options():
         required=False, default=None
     )
     return parser.parse_args()
+
+
+def get_screenshot(driver: Chrome, file_name: str) -> None:
+    """
+    get screenshot
+    """
+    with open(file_name, "wb") as png:
+        png.write(driver.get_screenshot_as_png())
+
+
+def wait_for_element_to_stale(
+        driver: Chrome, elem: WebElement, timeout: int = 10):
+    '''
+    wait for the given elem to be stale
+    '''
+    WebDriverWait(driver, timeout).until(
+        EC.staleness_of(elem)
+    )
+
+
+def get_price_from_row(row: WebElement) -> str:
+    """
+    get the hotel prices from a row
+    """
+    class_names = ('nDkDDb', 'iqYCVb', 'MW1oTb', 'UeIHqb')
+
+    for class_name in class_names:
+        try:
+            if row.find_element(By.CLASS_NAME, class_name).text:
+                return row.find_element(By.CLASS_NAME, class_name).text
+        except NoSuchElementException:
+            pass
+
+    return ''
+
+
+def open_all_options(driver: Chrome) -> None:
+    """
+    一直按查看更多選項，直到沒有為止
+    """
+    try:
+        driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
+    except NoSuchElementException:
+        pass
+    except ElementNotInteractableException:
+        pass
+    except StaleElementReferenceException:
+        time.sleep(5)
+        driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
+
+    while True:
+        try:
+            driver.find_element(By.CLASS_NAME, "bbRZy").click()
+        except ElementNotInteractableException:
+            return
+        except NoSuchElementException:
+            return
 
 
 def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[Dict]:
