@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-import time
 from typing import Dict, List
 from datetime import datetime, timedelta
 import pandas
@@ -161,8 +160,9 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
     for row in all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc'):
         try:
             ota = row.find_element(By.CSS_SELECTOR, '[data-click-type="268"]').text
-            price = row.find_element(By.CLASS_NAME, 'iqYCVb').text
-            prices.append({"OTA": ota, "price": price})
+            price = get_price_from_row(row)
+            if price:
+                prices.append({"OTA": ota, "price": price})
         except NoSuchElementException:
             print(row.text)
         except StaleElementReferenceException:
