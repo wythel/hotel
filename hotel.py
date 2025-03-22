@@ -90,9 +90,14 @@ def open_all_options(driver: Chrome) -> None:
     """
     一直按查看更多選項，直到沒有為止
     """
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, '[jsname="wQivvd"]'))
-    ).click()
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, '[jsname="wQivvd"]'))
+        ).click()
+    except TimeoutException:
+        print("沒有更多選項")
+        return
+
     while True:
         try:
             driver.find_element(By.CLASS_NAME, "bbRZy").click()
