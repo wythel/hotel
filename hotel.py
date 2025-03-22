@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -54,6 +55,22 @@ def wait_for_element_to_stale(
     )
 
 
+def get_driver():
+    """
+    """
+    if platform.system() != "Darwin":
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # 無頭模式 (Headless Mode)
+        chrome_options.add_argument("--no-sandbox")  # 避免權限問題
+        chrome_options.add_argument("--disable-dev-shm-usage")  # 避免共享內存不足問題
+        chrome_options.add_argument("--disable-gpu")  # 在無頭模式下需要禁用 GPU
+        chrome_options.add_argument("--disable-setuid-sandbox")  # 在容器內運行時必須禁用
+        chrome_options.add_argument("--window-size=1920,1080")
+        return Chrome(options=chrome_options)
+    else:
+        return Chrome()
+
+
 def get_price_from_row(row: WebElement) -> str:
     """
     get the hotel prices from a row
@@ -74,16 +91,9 @@ def open_all_options(driver: Chrome) -> None:
     """
     一直按查看更多選項，直到沒有為止
     """
-    try:
-        driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
-    except NoSuchElementException:
-        pass
-    except ElementNotInteractableException:
-        pass
-    except StaleElementReferenceException:
-        time.sleep(5)
-        driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
-
+    WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, '[jsname="wQivvd"]'))
+    ).click()
     while True:
         try:
             driver.find_element(By.CLASS_NAME, "bbRZy").click()
@@ -93,41 +103,48 @@ def open_all_options(driver: Chrome) -> None:
             return
 
 
+def set_checkin_date(driver: Chrome, date: str):
+    """
+    set checkin date
+    """
+    checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
+    elem = driver.find_element(By.CSS_SELECTOR, '[jsname="Z186"]')
+    checkin.send_keys(
+        Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
+        date + Keys.ENTER)
+    try:
+        wait_for_element_to_stale(driver, elem)
+    except TimeoutException:
+        print("Element not stale after setting checkin date.")
+
+
+def set_checkout_date(driver: Chrome, date: str):
+    """
+    set checkin date
+    """
+    checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="退房"]')
+    elem = driver.find_element(By.CSS_SELECTOR, '[jsname="Z186"]')
+    checkin.send_keys(
+        Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
+        date + Keys.ENTER)
+    try:
+        wait_for_element_to_stale(driver, elem, 10)
+    except TimeoutException:
+        print("Element not stale after setting checkout date")
+
+
 def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[Dict]:
     """
     get the hotel price by given name and check in/out date
     """
-
-    if platform.system() != "Darwin":
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  # 無頭模式 (Headless Mode)
-        chrome_options.add_argument("--no-sandbox")  # 避免權限問題
-        chrome_options.add_argument("--disable-dev-shm-usage")  # 避免共享內存不足問題
-        chrome_options.add_argument("--disable-gpu")  # 在無頭模式下需要禁用 GPU
-        chrome_options.add_argument("--disable-setuid-sandbox")  # 在容器內運行時必須禁用
-        chrome_options.add_argument("--window-size=1920,1080")
-        driver = Chrome(options=chrome_options)
-    else:
-        driver = Chrome()
-
+    driver = get_driver()
     driver.get(f"https://www.google.com/travel/search?q={name}&hl=zh-Hant-CA")
 
-    checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
-    checkin.send_keys(
-        Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
-        checkin_date + Keys.ENTER)
-    time.sleep(5)
-    checkout = driver.find_element(By.CSS_SELECTOR, '[placeholder="退房"]')
-    checkout.send_keys(
-        Keys.BACK_SPACE * len(checkout.get_attribute("value")) +
-        checkout_date + Keys.ENTER)
-    time.sleep(5)
+    set_checkin_date(driver, checkin_date)
+    set_checkout_date(driver, checkout_date)
+
     # 查看更多選項
-    try:
-        driver.find_element(By.CSS_SELECTOR, '[jsname="wQivvd"]').click()
-        time.sleep(5)
-    except NoSuchElementException:
-        pass
+    open_all_options(driver)
 
     file_name: str = f"{name}_{checkin_date}_{checkout_date}.png"
     with open(file_name, "wb") as png:
@@ -148,6 +165,8 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
             prices.append({"OTA": ota, "price": price})
         except NoSuchElementException:
             print(row.text)
+        except StaleElementReferenceException:
+            print("Row stale")
     driver.quit()
     return prices
 
