@@ -29,8 +29,19 @@ run script:       # This job runs in the build stage, which runs first.
     - pip install poetry
     - poetry install
   script:
-    - python hotel.py --from-csv-file input.csv
+    - python hotel.py --name $NAME --start-date $START_DATE --end-date $END_DATE
   artifacts:
     paths:
       - "*.png"
       - "*.xlsx"
+  parallel:
+    matrix:
+      - NAME: 捷絲旅宜蘭礁溪館
+        START_DATE: 3月23日
+        END_DATE: 3月31日
+      - NAME: 北投晶泉丰旅
+        START_DATE: 3月23日
+        END_DATE: 3月31日
+      - NAME: 礁溪晶泉丰旅
+        START_DATE: 3月23日
+        END_DATE: 3月31日

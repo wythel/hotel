@@ -112,14 +112,21 @@ def set_checkin_date(driver: Chrome, date: str):
     set checkin date
     """
     checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
-    elem = driver.find_element(By.CSS_SELECTOR, '[jsname="Z186"]')
+    try:
+        elem = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[jsname="Z186"]'))
+        )
+    except TimeoutException:
+        elem = None
     checkin.send_keys(
         Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
         date + Keys.ENTER)
-    try:
-        wait_for_element_to_stale(driver, elem)
-    except TimeoutException:
-        print("Element not stale after setting checkin date.")
+
+    if elem:
+        try:
+            wait_for_element_to_stale(driver, elem)
+        except TimeoutException:
+            print("Element not stale after setting checkin date.")
 
 
 def set_checkout_date(driver: Chrome, date: str):
@@ -127,14 +134,20 @@ def set_checkout_date(driver: Chrome, date: str):
     set checkin date
     """
     checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="退房"]')
-    elem = driver.find_element(By.CSS_SELECTOR, '[jsname="Z186"]')
+    try:
+        elem = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[jsname="Z186"]'))
+        )
+    except TimeoutException:
+        elem = None
     checkin.send_keys(
         Keys.BACK_SPACE * len(checkin.get_attribute("value")) +
         date + Keys.ENTER)
-    try:
-        wait_for_element_to_stale(driver, elem, 10)
-    except TimeoutException:
-        print("Element not stale after setting checkout date")
+    if elem:
+        try:
+            wait_for_element_to_stale(driver, elem, 10)
+        except TimeoutException:
+            print("Element not stale after setting checkout date")
 
 
 def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[Dict]:
