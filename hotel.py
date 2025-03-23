@@ -192,9 +192,10 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
 def main():
     options = parse_options()
     if options.from_csv_file is None:
-        key = "_".join((options.name, options.check_in, options.check_out))
-        data = {key: get_hotel_prices(
-            options.name, options.check_in, options.check_out)}
+        key = "_".join((options.name, options.start_date, options.end_date))
+        data = {
+            key: get_hotel_prices(
+                options.name, options.start_date, options.end_date)}
     else:
         reader = pandas.read_csv(options.from_csv_file)
         for row in reader.to_dict(orient="records"):
