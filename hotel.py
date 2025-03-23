@@ -92,11 +92,20 @@ def open_all_options(driver: Chrome) -> None:
     """
     try:
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, '[jsname="wQivvd"]'))
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[jsname="wQivvd"]'))
         ).click()
     except TimeoutException:
         print("沒有更多選項")
         return
+    except StaleElementReferenceException:
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '[jsname="wQivvd"]'))
+            ).click()
+        except StaleElementReferenceException:
+            pass
 
     while True:
         try:
@@ -111,10 +120,12 @@ def set_checkin_date(driver: Chrome, date: str):
     """
     set checkin date
     """
-    checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
+    checkin = driver.find_element(
+        By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
     try:
         elem = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '[jsname="Z186"]'))
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, '[jsname="Z186"]'))
         )
     except TimeoutException:
         elem = None
@@ -136,7 +147,8 @@ def set_checkout_date(driver: Chrome, date: str):
     checkin = driver.find_element(By.CSS_SELECTOR, '[placeholder="退房"]')
     try:
         elem = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '[jsname="Z186"]'))
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, '[jsname="Z186"]'))
         )
     except TimeoutException:
         elem = None
@@ -150,7 +162,8 @@ def set_checkout_date(driver: Chrome, date: str):
             print("Element not stale after setting checkout date")
 
 
-def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[Dict]:
+def get_hotel_prices(
+        name: str, checkin_date: str, checkout_date: str) -> List[Dict]:
     """
     get the hotel price by given name and check in/out date
     """
@@ -168,7 +181,8 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
         png.write(driver.get_screenshot_as_png())
     try:
         all_options = [
-            elem for elem in driver.find_elements(By.CSS_SELECTOR, '[jsname="Z186"]')
+            elem for elem in driver.find_elements(
+                By.CSS_SELECTOR, '[jsname="Z186"]')
             if elem.text != ''][-1]
     except IndexError:
         print(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
@@ -177,7 +191,8 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
     prices = []
     for row in all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc'):
         try:
-            ota = row.find_element(By.CSS_SELECTOR, '[data-click-type="268"]').text
+            ota = row.find_element(
+                By.CSS_SELECTOR, '[data-click-type="268"]').text
             price = get_price_from_row(row)
             if price:
                 prices.append({"OTA": ota, "price": price})
@@ -189,32 +204,34 @@ def get_hotel_prices(name: str, checkin_date: str, checkout_date: str) -> List[D
     return prices
 
 
+def dump_day_by_day_price_to_excel(name: str, start_date: str, end_date: str):
+    """
+    """
+    start = datetime.strptime(start_date, "%m月%d日")
+    end = datetime.strptime(end_date, "%m月%d日") + ONE_DAY
+    data = {}
+    while start < end:
+        checkin = datetime.strftime(start, "%m月%d日")
+        checkout = datetime.strftime(start + ONE_DAY, "%m月%d日")
+        key = "_".join((checkin, checkout))
+        data[key] = get_hotel_prices(name, checkin, checkout)
+        start += ONE_DAY
+    with pandas.ExcelWriter(f"{name}.xlsx", engine="xlsxwriter") as writer:
+        for sheet_name, records in data.items():
+            df = pandas.DataFrame(records)
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
 def main():
     options = parse_options()
     if options.from_csv_file is None:
-        key = "_".join((options.name, options.start, options.end))
-        data = {
-            key: get_hotel_prices(
-                options.name, options.start, options.end)}
+        dump_day_by_day_price_to_excel(
+            options.name, options.start, options.end)
     else:
         reader = pandas.read_csv(options.from_csv_file)
         for row in reader.to_dict(orient="records"):
-            start = datetime.strptime(row['start'], "%m月%d日")
-            end = datetime.strptime(row['end'], "%m月%d日") + ONE_DAY
-            hotel = row['name']
-            data = {}
-            while start < end:
-                checkin = datetime.strftime(start, "%m月%d日")
-                checkout = datetime.strftime(start + ONE_DAY, "%m月%d日")
-                key = "_".join((checkin, checkout))
-                data[key] = get_hotel_prices(
-                    row['name'], checkin, checkout)
-                start += ONE_DAY
-
-            with pandas.ExcelWriter(f"{hotel}.xlsx", engine="xlsxwriter") as writer:
-                for sheet_name, records in data.items():
-                    df = pandas.DataFrame(records)
-                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+            dump_day_by_day_price_to_excel(
+                row['name'], row['start'], row['end'])
 
 
 if __name__ == "__main__":
