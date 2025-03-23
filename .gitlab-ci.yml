@@ -36,12 +36,16 @@ run script:       # This job runs in the build stage, which runs first.
       - "*.xlsx"
   parallel:
     matrix:
-      - NAME: 捷絲旅宜蘭礁溪館
-        START_DATE: 3月23日
-        END_DATE: 3月31日
-      - NAME: 北投晶泉丰旅
-        START_DATE: 3月23日
-        END_DATE: 3月31日
-      - NAME: 礁溪晶泉丰旅
-        START_DATE: 3月23日
+      # 第一種方法
+      # - NAME: 捷絲旅宜蘭礁溪館
+      #   START_DATE: 3月23日
+      #   END_DATE: 3月31日
+      # - NAME: 北投晶泉丰旅
+      #   START_DATE: 3月23日
+      #   END_DATE: 3月31日
+      # - NAME: 礁溪晶泉丰旅
+      #   START_DATE: 3月23日
+      #   END_DATE: 3月31日
+      - NAME: [捷絲旅宜蘭礁溪館, 北投晶泉丰旅, 礁溪晶泉丰旅, 捷絲旅 大阪心齋橋, 捷絲旅臺大尊賢館, Just Sleep Taipei Ximending, just sleep sanchong]
+        START_DATE: 3月24日
         END_DATE: 3月31日
