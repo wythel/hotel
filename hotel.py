@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
@@ -97,6 +98,9 @@ def open_all_options(driver: Chrome) -> None:
         ).click()
     except TimeoutException:
         print("沒有更多選項")
+        return
+    except ElementClickInterceptedException:
+        print("Click intercepted for open all options")
         return
     except StaleElementReferenceException:
         try:
