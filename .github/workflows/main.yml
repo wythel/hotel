@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        name: [捷絲旅宜蘭礁溪館, 北投晶泉丰旅, 礁溪晶泉丰旅, 捷絲旅 大阪心齋橋, 捷絲旅臺大尊賢館, Just Sleep Taipei Ximending, just sleep sanchong]
+      # [捷絲旅宜蘭礁溪館, 北投晶泉丰旅, 礁溪晶泉丰旅, 捷絲旅 大阪心齋橋, 捷絲旅臺大尊賢館, Just Sleep Taipei Ximending, just sleep sanchong]
+        name: [捷絲旅宜蘭礁溪館]
         start_date: ["3月24日"]
         end_date: ["3月31日"]
     container:
@@ -42,7 +43,7 @@ jobs:
         id: sanitize
         run: |
           # 把中文轉換為 slug 格式：just_sleep_yilan_jiaoxi 等
-          SAFE_NAME=$(echo "${{ matrix.name }}" | iconv -c -t ascii//TRANSLIT | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
+          SAFE_NAME=$(echo "${{ matrix.name }}" | base64)
           echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
         shell: bash
 
