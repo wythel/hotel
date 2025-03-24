@@ -19,6 +19,7 @@ jobs:
       image: wythel/hotel
     steps:
       - name: Set up Python virtual environment
+        shell: bash
         run: |
           python3 -m venv run
           source run/bin/activate
@@ -30,6 +31,7 @@ jobs:
           NAME: ${{ matrix.name }}
           START_DATE: ${{ matrix.start_date }}
           END_DATE: ${{ matrix.end_date }}
+        shell: bash
         run: |
           source run/bin/activate
           python hotel.py --name "$NAME" --start-date "$START_DATE" --end-date "$END_DATE"
