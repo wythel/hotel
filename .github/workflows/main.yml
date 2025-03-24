@@ -18,6 +18,8 @@ jobs:
     container:
       image: wythel/hotel
     steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
       - name: Set up Python virtual environment
         shell: bash
         run: |
