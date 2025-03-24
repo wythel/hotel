@@ -38,11 +38,19 @@ jobs:
           source run/bin/activate
           python hotel.py --name "$NAME" --start-date "$START_DATE" --end-date "$END_DATE"
 
+      - name: Sanitize name
+        id: sanitize
+        run: |
+          # 把中文轉換為 slug 格式：just_sleep_yilan_jiaoxi 等
+          SAFE_NAME=$(echo "${{ matrix.name }}" | iconv -c -t ascii//TRANSLIT | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
+          echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-results
+          name: hotel-prices-${{ steps.sanitize.outputs.safe_name }}
           path: |
             *.png
             *.xlsx
