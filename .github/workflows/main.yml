@@ -1,0 +1,44 @@
+name: Hotel Pipeline
+
+on:
+  workflow_dispatch:  # 可手動觸發
+  push:
+    branches:
+      - main
+      - leo
+
+jobs:
+  run-hotel:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        name: [捷絲旅宜蘭礁溪館, 北投晶泉丰旅, 礁溪晶泉丰旅, 捷絲旅 大阪心齋橋, 捷絲旅臺大尊賢館, Just Sleep Taipei Ximending, just sleep sanchong]
+        start_date: ["3月24日"]
+        end_date: ["3月31日"]
+    container:
+      image: wythel/hotel
+    steps:
+      - name: Set up Python virtual environment
+        run: |
+          python3 -m venv run
+          source run/bin/activate
+          pip install poetry
+          poetry install
+
+      - name: Run hotel script
+        env:
+          NAME: ${{ matrix.name }}
+          START_DATE: ${{ matrix.start_date }}
+          END_DATE: ${{ matrix.end_date }}
+        run: |
+          source run/bin/activate
+          python hotel.py --name "$NAME" --start-date "$START_DATE" --end-date "$END_DATE"
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-results-${{ matrix.name }}
+          path: |
+            *.png
+            *.xlsx
