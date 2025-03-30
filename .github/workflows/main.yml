@@ -13,8 +13,8 @@ jobs:
     strategy:
       matrix:
         name: [捷絲旅宜蘭礁溪館, 北投晶泉丰旅, 礁溪晶泉丰旅, 捷絲旅 大阪心齋橋, 捷絲旅臺大尊賢館, Just Sleep Taipei Ximending, just sleep sanchong]
-        start_date: ["3月24日"]
-        end_date: ["3月31日"]
+        start_date: ["4月1日"]
+        end_date: ["4月8日"]
     container:
       image: wythel/hotel
     steps:
