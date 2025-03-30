@@ -58,7 +58,7 @@ def wait_for_element_to_stale(
 def get_driver():
     """
     """
-    if platform.system() != "Darwin":
+    if platform.system() == "Linux":
         chrome_options = Options()
         chrome_options.add_argument("--headless")  # 無頭模式 (Headless Mode)
         chrome_options.add_argument("--no-sandbox")  # 避免權限問題
