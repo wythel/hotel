@@ -191,6 +191,9 @@ def get_hotel_prices(
     except IndexError:
         print(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
         return []
+    except StaleElementReferenceException:
+        print(f"{name}: {checkin_date} and {checkout_date} - elem stale")
+        return []
 
     prices = []
     for row in all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc'):
