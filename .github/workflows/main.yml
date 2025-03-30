@@ -42,7 +42,7 @@ jobs:
         id: sanitize
         run: |
           # 把中文轉換為 slug 格式：just_sleep_yilan_jiaoxi 等
-          SAFE_NAME=$(echo "${{ matrix.name }}" | base64)
+          SAFE_NAME=$(echo "${{ matrix.name }}" | base64 | tr -cd '[:alnum:]')
           echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
         shell: bash
 
