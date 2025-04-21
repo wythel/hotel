@@ -4,12 +4,16 @@ from datetime import datetime, timedelta
 import pandas
 import platform
 import random
+import time
 import re
+import json
+import logging
 from selenium.webdriver.chrome.webdriver import WebDriver as Chrome
 from selenium.webdriver.chrome.webdriver import Options
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import WebDriverException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import ElementClickInterceptedException
@@ -18,8 +22,18 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# Configure logging
+logging.basicConfig(
+    filename="hotel.log",  # Log file name
+    level=logging.INFO,  # Log level
+    format="%(asctime)s - %(levelname)s - %(message)s"  # Log format
+)
 
 ONE_DAY = timedelta(days=1)
+
+class CouldNotSetDateException(Exception):
+    """Custom exception for date setting errors."""
+    pass
 
 
 def parse_options():
@@ -103,10 +117,10 @@ def open_all_options(driver: Chrome) -> None:
                 (By.CSS_SELECTOR, '[jsname="wQivvd"]'))
         ).click()
     except TimeoutException:
-        print("沒有更多選項")
+        logging.info("沒有更多選項")
         return
     except ElementClickInterceptedException:
-        print("Click intercepted for open all options")
+        logging.info("Click intercepted for open all options")
         return
     except StaleElementReferenceException:
         try:
@@ -130,8 +144,20 @@ def set_checkin_date(driver: Chrome, date: str):
     """
     set checkin date
     """
-    checkin = driver.find_element(
-        By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
+    count = 10
+    while True:
+        try:
+            checkin = driver.find_element(
+                By.CSS_SELECTOR, '[placeholder="登機報到頁面"]')
+            break
+        except ElementNotInteractableException:
+            logging.info("Element not interactable, retrying...")
+            count -= 1
+            if count == 0:
+                logging.info("Failed to find the checkin element after multiple attempts.")
+                raise CouldNotSetDateException
+            time.sleep(5)
+
     try:
         elem = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
@@ -147,7 +173,7 @@ def set_checkin_date(driver: Chrome, date: str):
         try:
             wait_for_element_to_stale(driver, elem)
         except TimeoutException:
-            print("Element not stale after setting checkin date.")
+            logging.info("Element not stale after setting checkin date.")
 
 
 def set_checkout_date(driver: Chrome, date: str):
@@ -169,7 +195,7 @@ def set_checkout_date(driver: Chrome, date: str):
         try:
             wait_for_element_to_stale(driver, elem, 10)
         except TimeoutException:
-            print("Element not stale after setting checkout date")
+            logging.info("Element not stale after setting checkout date")
 
 
 def get_hotel_prices(
@@ -178,10 +204,27 @@ def get_hotel_prices(
     get the hotel price by given name and check in/out date
     """
     driver = get_driver()
-    driver.get(f"https://www.google.com/travel/search?q={name}&hl=zh-Hant-CA")
+    count = 10
+    while True:
+        try:
+            driver.get(f"https://www.google.com/travel/search?q={name}&hl=zh-Hant-CA")
+            break
+        except WebDriverException:
+            logging.info("WebDriverException: Retrying...")
+            count -= 1
+            if count == 0:
+                logging.info("Failed to load the page after multiple attempts.")
+                driver.quit()
+                return []
+            time.sleep(5)
 
-    set_checkin_date(driver, checkin_date)
-    set_checkout_date(driver, checkout_date)
+    try:
+        set_checkin_date(driver, checkin_date)
+        set_checkout_date(driver, checkout_date)
+    except (CouldNotSetDateException, ElementNotInteractableException):
+        logging.info(f"Could not set date for {name} on {checkin_date} and {checkout_date}")
+        driver.quit()
+        return []
 
     # 查看更多選項
     open_all_options(driver)
@@ -195,10 +238,12 @@ def get_hotel_prices(
                 By.CSS_SELECTOR, '[jsname="Z186"]')
             if elem.text != ''][-1]
     except IndexError:
-        print(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
+        logging.info(f"找不到{name}在{checkin_date}和{checkout_date}之間的價錢")
+        driver.quit()
         return []
     except StaleElementReferenceException:
-        print(f"{name}: {checkin_date} and {checkout_date} - elem stale")
+        logging.info(f"{name}: {checkin_date} and {checkout_date} - elem stale")
+        driver.quit()
         return []
 
     prices = []
@@ -210,9 +255,9 @@ def get_hotel_prices(
             if price:
                 prices.append({"OTA": ota, "price": price})
         except NoSuchElementException:
-            print(row.text)
+            logging.info(row.text)
         except StaleElementReferenceException:
-            print("Row stale")
+            logging.info("Row stale")
     driver.quit()
     return prices
 
@@ -246,7 +291,7 @@ def dump_price_data_to_excel(data: Dict[str, List[Dict]], file_name: str):
 def convert_to_chartjs_format(data: Dict[str, List[Dict]]) -> Dict:
     """
     Convert the output of generate_day_by_day_price_data to a format that
-    Chart.js can consume.
+    Chart.js can consume for a bar chart.
     """
     labels = list(data.keys())  # Use the date ranges as labels
     datasets = []
@@ -259,12 +304,16 @@ def convert_to_chartjs_format(data: Dict[str, List[Dict]]) -> Dict:
 
     # Create a dataset for each OTA
     for ota in ota_set:
+        # Generate a single random color
+        r, g, b = random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
+        color = f"rgba({r}, {g}, {b}, 0.6)"  # Semi-transparent for background
+
         dataset = {
             "label": ota,
             "data": [],
-            "borderColor": f"rgba({random.randint(0, 255)}, {random.randint(0, 255)}, {random.randint(0, 255)}, 1)",
-            "borderWidth": 2,
-            "fill": False
+            "backgroundColor": color,  # Use the same color for background
+            "borderColor": color.replace("0.6", "1"),  # Full opacity for border
+            "borderWidth": 1  # Border width for the bars
         }
         for date_range in labels:
             # Find the price for the current OTA in the current date range
@@ -288,8 +337,6 @@ def update_result_html(data_dict: Dict[str, Dict[str, List[Dict]]], html_file: s
     The keys of the data_dict are used as the values for the dropdown options.
     The first item in the data_dict is used as the default dataset for the chart.
     """
-    import json
-
     # Convert each dataset to Chart.js format
     chartjs_data = {}
     for key, data in data_dict.items():
