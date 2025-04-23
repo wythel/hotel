@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Line Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <select id="dataSelector">
+        <!-- Dropdown options will be dynamically inserted here -->
+    </select>
+    <canvas id="lineChart" width="400" height="200"></canvas>
+    <script>
+
+        const datasets = {}; // This will be replaced dynamically
+
+        // Create the chart
+        const ctx = document.getElementById("lineChart").getContext("2d");
+        let chart = new Chart(ctx, {
+            type: "bar",
+            data: {}, // Default empty data
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Event listener for dropdown
+        document.getElementById("dataSelector").addEventListener("change", function () {
+            const selectedDataset = this.value;
+            chart.data = datasets[selectedDataset];
+            chart.update();
+        });
+    </script>
+</body>
+</html>
