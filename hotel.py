@@ -31,6 +31,7 @@ logging.basicConfig(
 
 ONE_DAY = timedelta(days=1)
 
+
 class CouldNotSetDateException(Exception):
     """Custom exception for date setting errors."""
     pass
@@ -247,7 +248,14 @@ def get_hotel_prices(
         return []
 
     prices = []
-    for row in all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc'):
+    try:
+        rows = all_options.find_elements(By.CSS_SELECTOR, '.ADs2Tc')
+    except StaleElementReferenceException:
+        logging.info(f"{name}: {checkin_date} and {checkout_date} - elem stale")
+        driver.quit()
+        return []
+
+    for row in rows:
         try:
             ota = row.find_element(
                 By.CSS_SELECTOR, '[data-click-type="268"]').text
