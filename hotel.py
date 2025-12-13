@@ -214,8 +214,28 @@ def get_hotel_prices(
 def dump_day_by_day_price_to_excel(name: str, start_date: str, end_date: str):
     """
     """
-    start = datetime.strptime(start_date, "%m月%d日")
-    end = datetime.strptime(end_date, "%m月%d日") + ONE_DAY
+    # 若輸入只有月日 (例如 "3月23日")，預設使用當前年份；若解析失敗（如 2月29 日非閏年），會嘗試鄰近年份作為 fallback。
+    current_year = datetime.now().year
+    def parse_md(md: str, year: int) -> datetime:
+        # md example: "3月23日" -> build "2023 3月23日" style with %Y%m月%d日
+        try:
+            return datetime.strptime(f"{year}{md}", "%Y%m月%d日")
+        except ValueError:
+            raise
+    # 先嘗試用 current_year；若失敗嘗試 current_year+1 與 current_year-1
+    try:
+        start = parse_md(start_date, current_year)
+        end = parse_md(end_date, current_year) + ONE_DAY
+        if end <= start:
+            end = parse_md(end_date, current_year + 1) + ONE_DAY
+    except ValueError:
+        start = end = None
+        
+    if start is None or end is None:
+        # 最後的 fallback：直接使用 datetime.strptime 讓原本的錯誤冒出供除錯
+        start = datetime.strptime(start_date, "%m月%d日")
+        end = datetime.strptime(end_date, "%m月%d日") + ONE_DAY
+
     data = {}
     while start < end:
         checkin = datetime.strftime(start, "%m月%d日")
